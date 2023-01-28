@@ -1,0 +1,13 @@
+# Target labels
+ ELF2UF2Build
+# Source files and their labels
+/home/asger/pico/picoRGBstrip/picoRGBstrip/build/CMakeFiles/ELF2UF2Build
+/home/asger/pico/picoRGBstrip/picoRGBstrip/build/CMakeFiles/ELF2UF2Build.rule
+/home/asger/pico/picoRGBstrip/picoRGBstrip/build/CMakeFiles/ELF2UF2Build-complete.rule
+/home/asger/pico/picoRGBstrip/picoRGBstrip/build/elf2uf2/src/ELF2UF2Build-stamp/ELF2UF2Build-install.rule
+/home/asger/pico/picoRGBstrip/picoRGBstrip/build/elf2uf2/src/ELF2UF2Build-stamp/ELF2UF2Build-mkdir.rule
+/home/asger/pico/picoRGBstrip/picoRGBstrip/build/elf2uf2/src/ELF2UF2Build-stamp/ELF2UF2Build-download.rule
+/home/asger/pico/picoRGBstrip/picoRGBstrip/build/elf2uf2/src/ELF2UF2Build-stamp/ELF2UF2Build-update.rule
+/home/asger/pico/picoRGBstrip/picoRGBstrip/build/elf2uf2/src/ELF2UF2Build-stamp/ELF2UF2Build-patch.rule
+/home/asger/pico/picoRGBstrip/picoRGBstrip/build/elf2uf2/src/ELF2UF2Build-stamp/ELF2UF2Build-configure.rule
+/home/asger/pico/picoRGBstrip/picoRGBstrip/build/elf2uf2/src/ELF2UF2Build-stamp/ELF2UF2Build-build.rule

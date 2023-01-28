@@ -1,0 +1,3 @@
+/home/asger/pico/picoRGBstrip/picoRGBstrip/build/pioasm/CMakeFiles/rebuild_cache.dir
+/home/asger/pico/picoRGBstrip/picoRGBstrip/build/pioasm/CMakeFiles/edit_cache.dir
+/home/asger/pico/picoRGBstrip/picoRGBstrip/build/pioasm/CMakeFiles/pioasm.dir
