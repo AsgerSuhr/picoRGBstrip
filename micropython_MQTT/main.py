@@ -23,7 +23,7 @@
 
 import json
 from secrets import wifi_SSID, wifi_password, mqtt_server, mqtt_port, mqtt_user, mqtt_password
-from lib.makerlab.mlha import MLHA 
+from lib.makerlab.mlha import MLHA, light
 from machine import Pin, Timer
 import onewire, ds18x20
 import time
@@ -31,13 +31,15 @@ import gc
 from machine import Pin
 from rp2 import PIO, StateMachine, asm_pio
 from time import sleep
-import math
+import math, _thread, machine
 from APA102_PIO import *
 
 # Pins definition ===================================
 led_b = Pin(6, Pin.OUT)
-latest = 0
+latest = 254
 mlha = None # WiFi, MQTT and HomeAssistant library
+new_data = False
+colorwheel_thread_running = False
 extracted_data = {
       "brightness": latest,
       "color_mode": "rgb",
@@ -53,9 +55,8 @@ extracted_data = {
         "h": 344.0,
         "s": 29.412
       },
-      "effect": "colorloop",
       "state": "OFF",
-      "transition": 2,
+      'effect':'off'
     }
 # Functions =========================================
 
@@ -63,20 +64,20 @@ def convertRange( value, r1, r2 ):
     return ( value - r1[ 0 ] ) * ( r2[ 1 ] - r2[ 0 ] ) / ( r1[ 1 ] - r1[ 0 ] ) + r2[ 0 ]
 
 def msg_received(topic, msg, retained, duplicate):
-    global latest, extracted_data
+    global latest, extracted_data, new_data
     msg = json.loads(msg.decode('utf-8'))
-    print(msg)
+    #print(msg)
     if topic == "system/status":
         mlha.publish("system/status", "online")
     elif topic == "light/LED_status":
         if msg == b"True":
-            print(f'topic: {topic}')
-            print(f'message: {msg}')
+            #print(f'topic: {topic}')
+            #print(f'message: {msg}')
             led_b.value(1)
             mlha.publish("state", 'True')
         elif msg == b"False":
-            print(f'topic: {topic}')
-            print(f'message: {msg}')
+            #print(f'topic: {topic}')
+            #print(f'message: {msg}')
             led_b.value(0)
             mlha.publish("state", 'False')
         elif msg['state'] == 'ON':
@@ -90,6 +91,10 @@ def msg_received(topic, msg, retained, duplicate):
         if 'color' in msg.keys():
             r, g, b = msg['color']['r'], msg['color']['g'], msg['color']['b']
             extracted_data['color'] = {'r':msg['color']['r'], 'g':msg['color']['g'], 'b':msg['color']['b']}
+
+        if 'effect' in msg.keys():
+            effect = msg['effect']
+            extracted_data['effect'] = effect
         
         extracted_data['color_mode'] = 'rgb'
         
@@ -98,23 +103,49 @@ def msg_received(topic, msg, retained, duplicate):
     
     time.sleep(1)
     stringified_data = json.dumps(extracted_data)
-    print(stringified_data)
+    #print(stringified_data)
     mlha.publish("state", stringified_data)
+    new_data = True
+
+
+def colorwheel_thread(speed):
+    global colorwheel_thread_running
+    
+    TABLE_SIZE = (1 << speed)
+    wave_table = [0 for x in range(TABLE_SIZE)]
+    for i in range(TABLE_SIZE):
+        wave_table[i] = int(pow(math.sin(i * math.pi / TABLE_SIZE), 5)*127)
+    
+    t = 0
+    while colorwheel_thread_running:
+        paral_sm.put(0)
+        for i in range(30):
+            
+            put_rgb888(paral_sm,
+                    int(convertRange(extracted_data['brightness'], [0,255], [0,15])),
+                    wave_table[(i + t) % TABLE_SIZE],
+                    wave_table[(2 * i + 3 * 2) % TABLE_SIZE],
+                    wave_table[(3 * i + 4 * t) % TABLE_SIZE])
+            
+        paral_sm.put(1)
+        t+= 1
 
 
 # Main =============================================
+machine.freq(133000000)
 paral_sm = StateMachine(0, paral_prog, freq=5 * 1000 * 1000, sideset_base=Pin(2), out_base=Pin(3))
 paral_sm.active(1)
 
 # Initialize main component (WiFi, MQTT and HomeAssistant)
-mlha = MLHA(wifi_SSID, wifi_password, mqtt_server, mqtt_port, mqtt_user, mqtt_password, name='LEDstrip')
+mlha = light(wifi_SSID, wifi_password, mqtt_server, mqtt_port, mqtt_user, mqtt_password, name='LEDstrip')
 mlha.set_callback(msg_received)
 
 print("New session being set up")
 
 # Publish config for sensors
 print("Publishing config to Homeassistant")
-mlha.publish_config("LED_status", "LED Status", "light", None, None, None)
+mlha.publish_config('LED_status', 'LED status', True, ['off', 'colorwheel', 'colorwheel faster', 'colorwheel fastest'], True, ['rgb'], True)
+# mlha.publish_config("LED_status", "LED Status", "light", None, None, None)
 print("Connected to MQTT broker and subscribed to topics")
 
 print("Initialization complete, free memory: " + str(gc.mem_free()))
@@ -123,17 +154,59 @@ mlha.publish("system/status", "online", retain=True)
 
 # Main loop
 while True:
-    if extracted_data['state'] == 'ON':
-        paral_sm.put(0)
-        for i in range(30):
-            result = put_rgb888(paral_sm, int(convertRange(extracted_data['brightness'], [0,255], [0,15])), convertRange(extracted_data['color']['r'], [0,255], [0,127]), convertRange(extracted_data['color']['g'], [0,255], [0,127]), convertRange(extracted_data['color']['b'], [0,255], [0,127]))
-        paral_sm.put(1)
-        print(result)
-    else:
+
+    if extracted_data['state'] == 'ON' and new_data:
+
+        if extracted_data['effect'] == 'off':
+            if colorwheel_thread_running:
+                colorwheel_thread_running = False
+                time.sleep_ms(500)
+                
+            paral_sm.put(0)
+            for i in range(30):
+                result = put_rgb888(paral_sm, int(convertRange(extracted_data['brightness'], [0,255], [0,15])), convertRange(extracted_data['color']['r'], [0,255], [0,127]), convertRange(extracted_data['color']['g'], [0,255], [0,127]), convertRange(extracted_data['color']['b'], [0,255], [0,127]))
+            paral_sm.put(1)
+            new_data = False
+            #print(result)
+
+
+        elif extracted_data['effect'] == 'colorwheel':
+            #print('slow')
+            if colorwheel_thread_running:
+                colorwheel_thread_running = False
+                time.sleep_ms(100)
+            colorwheel_thread_running = True
+            second_thread = _thread.start_new_thread(colorwheel_thread, [8])
+
+        elif extracted_data['effect'] == 'colorwheel faster':
+            #print('faster')
+            if colorwheel_thread_running:
+                colorwheel_thread_running = False
+                time.sleep_ms(100)
+            colorwheel_thread_running = True
+            second_thread = _thread.start_new_thread(colorwheel_thread, [6])
+
+        elif extracted_data['effect'] == 'colorwheel fastest':
+            #print('fastest')
+            if colorwheel_thread_running:
+                colorwheel_thread_running = False
+                time.sleep_ms(100)
+            colorwheel_thread_running = True
+            second_thread = _thread.start_new_thread(colorwheel_thread, [4])
+        
+        new_data = False
+
+
+    elif extracted_data['state'] == 'OFF':
+        if colorwheel_thread_running:
+                colorwheel_thread_running = False
+                time.sleep_ms(100)
         paral_sm.put(0)
         for i in range(30):
             put_rgb888(paral_sm, 0, 0, 0, 0)
-        paral_sm.put(1)        
+        paral_sm.put(1)
+
+
     try:
         mlha.check_mqtt_msg()
         time.sleep_ms(500)

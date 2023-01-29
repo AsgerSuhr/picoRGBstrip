@@ -224,3 +224,66 @@ class MLHA:
         except Exception as ex:
             print("error: " + str(ex))
             machine.reset()
+
+
+class light(MLHA):
+
+    def __init__(self, wifi_ssid, wifi_password, 
+                    mqtt_server, mqtt_port=1883, 
+                    mqtt_user=None, mqtt_password=None, 
+                    mqtt_keepalive=1800, name='picoW'):
+
+        super().__init__(wifi_ssid, wifi_password, mqtt_server, mqtt_port, 
+                        mqtt_user, mqtt_password, mqtt_keepalive, name)
+
+        self.device_type = 'light'
+
+    # Discovery packet for Homeassistant
+    def publish_config(self, discovery_topic:str, name:str, effect:bool=False, 
+                        effect_list:list=[str], color_mode:bool=False, 
+                        supported_color_modes:list=[str], brightness:bool=False, 
+                        brightness_scale:int=0) -> None:
+
+        print("Publishing discovery packet for " + name)
+        config_payload = {
+            "name": name,
+            "state_topic": self.pico_id + "/state",
+            "availability": [
+                {
+                    "topic": self.pico_id + "/system/status",
+                    "payload_available": "online",
+                    "payload_not_available": "offline"
+                }
+            ],
+            "device": {
+                "identifiers": self.pico_id,
+                "name": self.name,
+                "manufacturer": "Asger",
+                "model": "RPI Pico W",
+                "sw_version": "0.1",
+                "connections": [ ["ip", self.wlan.ifconfig()[0]], ["mac", ubinascii.hexlify(self.wlan.config('mac')).decode()] ]
+            },
+            "unique_id": self.pico_id + "-" + discovery_topic,
+            "expire_after": 60
+        }
+
+        config_payload['schema'] = 'json'
+        config_payload["command_topic"] = f'{self.pico_id}/{self.device_type}/{discovery_topic}'
+        if brightness:
+            config_payload['brightness'] = brightness
+        if color_mode:
+            config_payload['color_mode'] = color_mode
+        if supported_color_modes:
+            config_payload['supported_color_modes'] = supported_color_modes
+        if effect:
+            config_payload['effect'] = effect
+            config_payload['effect_list'] = effect_list
+        if brightness_scale:
+            config_payload['brightness_scale'] = brightness_scale
+        
+        self.subscribe(config_payload["command_topic"], absolute=True)
+        self.led.toggle()
+        time.sleep(1)
+        self.led.toggle()
+        time.sleep(1)
+        self.mqtt.publish("homeassistant/" + self.device_type + "/" + self.pico_id + "/" + discovery_topic + "/config", json.dumps(config_payload), retain=True)
