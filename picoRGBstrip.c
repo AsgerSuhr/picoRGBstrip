@@ -18,7 +18,7 @@
 #define SERIAL_FREQ (5 * 1000 * 1000)
 
 // Global brightness value 0->31
-#define BRIGHTNESS 16
+#define BRIGHTNESS 31
 
 void put_start_frame(PIO pio, uint sm) {
     pio_sm_put_blocking(pio, sm, 0u);
