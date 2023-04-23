@@ -471,7 +471,10 @@ int main()
 
 	publish_availability(mqtt->mqtt_client_inst, mqtt);
 	publish_reportState(mqtt->mqtt_client_inst, mqtt);
+
+	int secondsPassed = 0;
 	while(1) {
+		secondsPassed++;
 		sleep_ms(1000);
 
 		while (COLORWHEEL && STATE) {
@@ -509,6 +512,13 @@ int main()
 			}
 
 			NEW_DATA = false;
+		}
+
+		if (secondsPassed == 60*10) 
+		{
+			secondsPassed = 0;
+			publish_availability(mqtt->mqtt_client_inst, mqtt);
+			printf("Sending availability...\n");
 		}
 
 
