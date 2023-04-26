@@ -7,6 +7,7 @@
 #include "lwip/apps/mqtt_priv.h"
 #include "tusb.h"
 #include "apa102.h"
+#include "hardware/watchdog.h"
 
 #define WIFI_SSID "Linksys09288"
 #define WIFI_PASSWORD "dpu1eskef0"
@@ -389,12 +390,21 @@ static void mqtt_connection_cb(mqtt_client_t *client, void *arg, mqtt_connection
 						(const char*)buffer, 2,
 						mqtt_request_cb, arg,
 						1);    
+	} else if (status == MQTT_CONNECT_TIMEOUT) {
+		while(1); // wait for the watchdog to restart the system
 	}
 }
 
 int main()
 {
 	stdio_init_all();
+
+    if (watchdog_caused_reboot()) {
+        printf("Rebooted by Watchdog!\n");
+        return 0;
+    } else {
+        printf("Clean boot\n");
+    }
 	
 	pico_get_unique_board_id_string(ID, ID_LEN);
 
@@ -472,9 +482,12 @@ int main()
 	publish_availability(mqtt->mqtt_client_inst, mqtt);
 	publish_reportState(mqtt->mqtt_client_inst, mqtt);
 
+	watchdog_enable(10000, 1);
+
 	int secondsPassed = 0;
 	while(1) {
 		secondsPassed++;
+		watchdog_update();
 		sleep_ms(1000);
 
 		while (COLORWHEEL && STATE) {
@@ -490,6 +503,7 @@ int main()
 			put_end_frame(pio, sm);
 			sleep_ms(25);
 			++t;
+			watchdog_update();
 		}
 
 		if (NEW_DATA) 
