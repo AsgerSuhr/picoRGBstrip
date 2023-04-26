@@ -8,15 +8,18 @@
 #include "tusb.h"
 #include "apa102.h"
 #include "hardware/watchdog.h"
-
-#define WIFI_SSID "Linksys09288"
-#define WIFI_PASSWORD "dpu1eskef0"
+/* 
+include secrets.h file containing ssid and password for local network
+#define WIFI_SSID "SSID"
+#define WIFI_PASSWORD "PASSWORD"
+#define HA_PASS "MQTT BROKER PASSWORD"
+#define HA_IP "HOME ASSISTANT IP ADDRESS"
+*/
+#include "secrets.h"
 
 #define DEVICE_NAME "LED strip"
 #define NICE_NAME "Knight Rider"
 #define HA_USERNAME "homeassistant"
-#define HA_PASS "iyodoolaef3oogheiWoiquieheeriCepoi6daiRahceGiemahShahfie1jair2ah"
-#define HA_IP "192.168.1.118"
 #define KEEP_ALIVE 60
 #define LWT_TOPIC "LED strip worktable" // Last Will Testament topic
 #define LWT_MESS "ON" // Last Will Testament message
