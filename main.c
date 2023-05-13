@@ -48,6 +48,7 @@ uint8_t G = 255;
 uint8_t B = 255;
 bool COLORWHEEL = false;
 
+bool feed_the_dog = true;
 
 typedef struct MQTT_CLIENT_DATA_T {
 	mqtt_client_t *mqtt_client_inst;
@@ -272,6 +273,8 @@ static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t f
 	char buffer[100];
 	snprintf(buffer, 100, "%s-%s/light/pico_status", DEVICE_NAME, ID);
 
+	cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
+
 	// Parse the data recieved from the broker
 	if (strcmp((const char*)mqtt->topic, (const char*)buffer) == 0) {
 		
@@ -361,6 +364,7 @@ static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t f
 
 	publish_reportState(mqtt->mqtt_client_inst, mqtt);
 	NEW_DATA = true;
+	cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
 
 }
 
@@ -393,8 +397,8 @@ static void mqtt_connection_cb(mqtt_client_t *client, void *arg, mqtt_connection
 						(const char*)buffer, 2,
 						mqtt_request_cb, arg,
 						1);    
-	} else if (status == MQTT_CONNECT_TIMEOUT) {
-		while(1); // wait for the watchdog to restart the system
+	} else {
+		feed_the_dog = false;
 	}
 }
 
@@ -490,8 +494,8 @@ int main()
 	int secondsPassed = 0;
 	while(1) {
 		secondsPassed++;
-		watchdog_update();
-		sleep_ms(1000);
+		if (feed_the_dog) watchdog_update();
+		// sleep_ms(1000);
 
 		while (COLORWHEEL && STATE) {
 			put_start_frame(pio, sm);
@@ -506,7 +510,7 @@ int main()
 			put_end_frame(pio, sm);
 			sleep_ms(25);
 			++t;
-			watchdog_update();
+			if (feed_the_dog) watchdog_update();
 		}
 
 		if (NEW_DATA) 
