@@ -406,12 +406,12 @@ int main()
 {
 	stdio_init_all();
 
-    if (watchdog_caused_reboot()) {
-        printf("Rebooted by Watchdog!\n");
-        return 0;
-    } else {
-        printf("Clean boot\n");
-    }
+    // if (watchdog_caused_reboot()) {
+    //     printf("Rebooted by Watchdog!\n");
+    //     return 0;
+    // } else {
+    //     printf("Clean boot\n");
+    // }
 	
 	pico_get_unique_board_id_string(ID, ID_LEN);
 
@@ -495,7 +495,7 @@ int main()
 	while(1) {
 		secondsPassed++;
 		if (feed_the_dog) watchdog_update();
-		// sleep_ms(1000);
+		sleep_ms(1);
 
 		while (COLORWHEEL && STATE) {
 			put_start_frame(pio, sm);
@@ -535,7 +535,7 @@ int main()
 			NEW_DATA = false;
 		}
 
-		if (secondsPassed == 60*10) 
+		if (secondsPassed == 60*1000) 
 		{
 			secondsPassed = 0;
 			publish_availability(mqtt->mqtt_client_inst, mqtt);
